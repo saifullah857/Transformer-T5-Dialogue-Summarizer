@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Summarizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --orange-primary: #FB923C;
+            --orange-dark: #F97316;
+            --orange-deeper: #EA580C;
+            --orange-light: #FFEDD5;
+            --orange-pale: #FFF7ED;
+            --text-dark: #1C1917;
+            --text-muted: #78716C;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: var(--orange-pale);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Decorative background blobs */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::before {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, #FB923C, #FED7AA);
+            top: -150px; right: -150px;
+        }
+        body::after {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, #FDBA74, #FEF3C7);
+            bottom: -100px; left: -100px;
+        }
+
+        .page-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 40px 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Badge pill */
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--orange-light);
+            border: 1px solid #FED7AA;
+            color: var(--orange-deeper);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 100px;
+        }
+        .tech-badge .dot {
+            width: 6px; height: 6px;
+            background: var(--orange-primary);
+            border-radius: 50%;
+            animation: pulse-dot 1.8s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.7); }
+        }
+
+        /* Main heading */
+        .main-title {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: clamp(2.4rem, 6vw, 3.6rem);
+            color: var(--text-dark);
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+        }
+        .main-title span {
+            color: var(--orange-primary);
+            position: relative;
+        }
+        .main-title span::after {
+            content: '';
+            position: absolute;
+            left: 0; bottom: 2px;
+            width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--orange-primary), var(--orange-light));
+            border-radius: 2px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 300;
+            line-height: 1.6;
+        }
+
+        /* Card */
+        .summarizer-card {
+            background: #fff;
+            border: 1px solid #FED7AA;
+            border-radius: 20px;
+            box-shadow: 0 8px 40px rgba(251, 146, 60, 0.1), 0 2px 8px rgba(0,0,0,0.04);
+            overflow: hidden;
+            transition: box-shadow 0.3s ease;
+        }
+        .summarizer-card:hover {
+            box-shadow: 0 12px 50px rgba(251, 146, 60, 0.15), 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        /* Card top accent bar */
+        .card-accent-bar {
+            height: 4px;
+            background: linear-gradient(90deg, var(--orange-primary), #FDBA74, var(--orange-light));
+        }
+
+        /* Section labels */
+        .section-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        /* Textarea */
+        .textarea-wrapper {
+            position: relative;
+        }
+        .input-textarea {
+            width: 100%;
+            min-height: 180px;
+            padding: 16px;
+            border: 1.5px solid #E7E5E4;
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            background: var(--orange-pale);
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+            outline: none;
+            line-height: 1.6;
+        }
+        .input-textarea::placeholder { color: #A8A29E; }
+        .input-textarea:focus {
+            border-color: var(--orange-primary);
+            box-shadow: 0 0 0 4px rgba(251, 146, 60, 0.12);
+            background: #fff;
+        }
+
+        /* Char counter */
+        .char-counter {
+            position: absolute;
+            bottom: 12px; right: 14px;
+            font-size: 0.72rem;
+            color: #A8A29E;
+            font-weight: 500;
+            pointer-events: none;
+        }
+        .char-counter.warning { color: var(--orange-dark); }
+
+        /* Submit button */
+        .btn-summarize {
+            background: linear-gradient(135deg, var(--orange-primary) 0%, var(--orange-deeper) 100%);
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+            box-shadow: 0 4px 18px rgba(249, 115, 22, 0.35);
+            white-space: nowrap;
+        }
+        .btn-summarize:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(249, 115, 22, 0.45);
+        }
+        .btn-summarize:active:not(:disabled) { transform: translateY(0); }
+        .btn-summarize:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Clear button */
+        .btn-clear {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1.5px solid #E7E5E4;
+            padding: 14px 20px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s, background 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-clear:hover {
+            border-color: var(--orange-primary);
+            color: var(--orange-deeper);
+            background: var(--orange-pale);
+        }
+
+        /* Divider */
+        .or-divider {
+            display: flex; align-items: center; gap: 12px;
+            color: #D6D3D1; font-size: 0.8rem; font-weight: 500;
+        }
+        .or-divider::before, .or-divider::after {
+            content: ''; flex: 1; height: 1px; background: #F5F5F4;
+        }
+
+        /* Output area */
+        .output-panel {
+            background: var(--orange-light);
+            border: 1.5px solid #FED7AA;
+            border-radius: 14px;
+            padding: 20px;
+            min-height: 100px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .output-panel.has-content {
+            box-shadow: inset 0 2px 8px rgba(251, 146, 60, 0.07);
+        }
+
+        .output-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .output-label {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .output-icon {
+            width: 28px; height: 28px;
+            background: linear-gradient(135deg, var(--orange-primary), var(--orange-deeper));
+            border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 0.75rem;
+        }
+
+        /* Copy button */
+        .btn-copy {
+            background: #fff;
+            border: 1px solid #FED7AA;
+            color: var(--orange-deeper);
+            font-size: 0.78rem;
+            font-weight: 500;
+            padding: 5px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .btn-copy:hover {
+            background: var(--orange-primary);
+            border-color: var(--orange-primary);
+            color: #fff;
+        }
+        .btn-copy.copied {
+            background: #22C55E;
+            border-color: #22C55E;
+            color: #fff;
+        }
+
+        #summary-text {
+            font-size: 0.95rem;
+            color: var(--text-dark);
+            line-height: 1.75;
+            margin: 0;
+            min-height: 50px;
+        }
+        #summary-text.placeholder-text { color: #A8A29E; font-style: italic; }
+
+        /* Loading spinner */
+        .loading-wrap {
+            display: flex; align-items: center; gap: 10px;
+            color: var(--orange-deeper);
+            font-size: 0.9rem; font-weight: 500;
+        }
+        .spinner-orange {
+            width: 18px; height: 18px;
+            border: 2.5px solid #FED7AA;
+            border-top-color: var(--orange-primary);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Stats chips */
+        .stats-row {
+            display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px;
+        }
+        .stat-chip {
+            background: #fff;
+            border: 1px solid #FED7AA;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--orange-deeper);
+            display: flex; align-items: center; gap: 5px;
+        }
+
+        /* Footer */
+        .footer-note {
+            font-size: 0.78rem;
+            color: #A8A29E;
+            text-align: center;
+            margin-top: 24px;
+        }
+        .footer-note a { color: var(--orange-primary); text-decoration: none; }
+        .footer-note a:hover { text-decoration: underline; }
+
+        /* Fade-in animation */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeInUp 0.5s ease both; }
+        .fade-in-delay { animation: fadeInUp 0.5s ease 0.1s both; }
+        .fade-in-delay-2 { animation: fadeInUp 0.5s ease 0.2s both; }
+
+        /* Error state */
+        .error-state { color: #DC2626; }
+        .error-state i { margin-right: 6px; }
+    </style>
+</head>
+<body>
+<div class="page-wrapper">
+    <div class="container" style="max-width: 680px;">
+
+        <!-- Header -->
+        <div class="text-center mb-4 fade-in">
+            <div class="mb-3">
+                <span class="tech-badge">
+                    <span class="dot"></span>
+                    HuggingFace Transformer
+                </span>
+            </div>
+            <h1 class="main-title mb-3">
+                Smart <span>Summarizer</span>
+            </h1>
+            <p class="subtitle mx-auto" style="max-width: 420px;">
+                Paste any text and get an intelligent, concise summary in seconds — powered by state-of-the-art NLP.
+            </p>
+        </div>
+
+        <!-- Card -->
+        <div class="summarizer-card fade-in-delay">
+            <div class="card-accent-bar"></div>
+            <div class="p-4 p-md-5">
+
+                <!-- Input Section -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="section-label">Your Content</span>
+                    </div>
+
+                    <div class="textarea-wrapper">
+                        <textarea
+                            id="dialogue-input"
+                            class="input-textarea"
+                            placeholder="Paste an article, document, or any block of text here…"
+                        ></textarea>
+                        <span class="char-counter" id="char-counter">0 chars</span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex gap-3 align-items-center flex-wrap mb-4">
+                    <button class="btn-summarize" id="submit-btn" onclick="handleSummarize()">
+                        <i class="bi bi-stars"></i>
+                        Summarize
+                    </button>
+                    <button class="btn-clear" id="clear-btn" onclick="clearInput()">
+                        <i class="bi bi-x-circle"></i>
+                        Clear
+                    </button>
+                </div>
+
+                <!-- Divider -->
+                <div class="or-divider mb-4">
+                    <span>Summary</span>
+                </div>
+
+                <!-- Output Section -->
+                <div>
+                    <div class="output-panel" id="output-panel">
+                        <div class="output-header">
+                            <div class="output-label">
+                                <div class="output-icon">
+                                    <i class="bi bi-file-text-fill"></i>
+                                </div>
+                                <span class="section-label">Result</span>
+                            </div>
+                            <button class="btn-copy d-none" id="copy-btn" onclick="copyToClipboard()">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+
+                        <p id="summary-text" class="placeholder-text">
+                            Your summary will appear here…
+                        </p>
+
+                        <div class="stats-row d-none" id="stats-row">
+                            <div class="stat-chip">
+                                <i class="bi bi-hash"></i>
+                                <span id="word-count-in">0 words input</span>
+                            </div>
+                            <div class="stat-chip">
+                                <i class="bi bi-arrow-down-short"></i>
+                                <span id="word-count-out">0 words summary</span>
+                            </div>
+                            <div class="stat-chip">
+                                <i class="bi bi-percent"></i>
+                                <span id="reduction-stat">0% reduction</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <p class="footer-note fade-in-delay-2">
+            Powered by <a href="#">HuggingFace Transformers</a> &middot; Built with ♥
+        </p>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const textarea = document.getElementById('dialogue-input');
+    const charCounter = document.getElementById('char-counter');
+    const submitBtn = document.getElementById('submit-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const summaryText = document.getElementById('summary-text');
+    const copyBtn = document.getElementById('copy-btn');
+    const statsRow = document.getElementById('stats-row');
+    const outputPanel = document.getElementById('output-panel');
+
+    // Char counter
+    textarea.addEventListener('input', () => {
+        const len = textarea.value.length;
+        charCounter.textContent = len.toLocaleString() + ' chars';
+        charCounter.className = 'char-counter' + (len > 4000 ? ' warning' : '');
+    });
+
+    // Clear
+    function clearInput() {
+        textarea.value = '';
+        charCounter.textContent = '0 chars';
+        charCounter.className = 'char-counter';
+        summaryText.className = 'placeholder-text';
+        summaryText.innerHTML = 'Your summary will appear here…';
+        copyBtn.classList.add('d-none');
+        statsRow.classList.add('d-none');
+        outputPanel.classList.remove('has-content');
+        textarea.focus();
+    }
+
+    // Summarize
+    async function handleSummarize() {
+        const dialogue = textarea.value.trim();
+        if (!dialogue) {
+            textarea.focus();
+            return;
+        }
+
+        // Loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span class="spinner-orange"></span> Summarizing…`;
+        summaryText.className = '';
+        summaryText.innerHTML = `<div class="loading-wrap"><div class="spinner-orange"></div> Processing your content…</div>`;
+        copyBtn.classList.add('d-none');
+        statsRow.classList.add('d-none');
+
+        try {
+            const response = await fetch("/summarize/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dialogue }),
+            });
+
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
+            const data = await response.json();
+            const summary = data.summary || "No summary returned.";
+
+            summaryText.className = '';
+            summaryText.textContent = summary;
+            outputPanel.classList.add('has-content');
+            copyBtn.classList.remove('d-none');
+
+            // Stats
+            const wordsIn = dialogue.split(/\s+/).filter(Boolean).length;
+            const wordsOut = summary.split(/\s+/).filter(Boolean).length;
+            const reduction = Math.round((1 - wordsOut / wordsIn) * 100);
+            document.getElementById('word-count-in').textContent = wordsIn.toLocaleString() + ' words input';
+            document.getElementById('word-count-out').textContent = wordsOut.toLocaleString() + ' words summary';
+            document.getElementById('reduction-stat').textContent = Math.max(0, reduction) + '% reduction';
+            statsRow.classList.remove('d-none');
+
+        } catch (err) {
+            summaryText.className = 'error-state';
+            summaryText.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> ${err.message}`;
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="bi bi-stars"></i> Summarize`;
+        }
+    }
+
+    // Keyboard shortcut
+    textarea.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleSummarize();
+    });
+
+    // Copy
+    function copyToClipboard() {
+        const text = summaryText.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            copyBtn.classList.add('copied');
+            copyBtn.innerHTML = `<i class="bi bi-check2"></i> Copied!`;
+            setTimeout(() => {
+                copyBtn.classList.remove('copied');
+                copyBtn.innerHTML = `<i class="bi bi-clipboard"></i> Copy`;
+            }, 2000);
+        });
+    }
+</script>
+</body>
+</html>
